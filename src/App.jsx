@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Upload, Download, FileText, AlertCircle, CheckCircle2, Wand2, Copy, Check, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Upload, Download, FileText, AlertCircle, CheckCircle2, Wand2, Copy, Check, Trash2, Eye, EyeOff, Search, X } from 'lucide-react';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
@@ -12,6 +12,36 @@ export default function App() {
   const [success, setSuccess] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  
+  const [searchTermLeft, setSearchTermLeft] = useState('');
+  const [searchTermRight, setSearchTermRight] = useState('');
+  const [showSearchLeft, setShowSearchLeft] = useState(false);
+  const [showSearchRight, setShowSearchRight] = useState(false);
+  const [activeSection, setActiveSection] = useState(null);
+  
+  const leftSectionRef = useRef(null);
+  const rightSectionRef = useRef(null);
+  const searchInputLeftRef = useRef(null);
+  const searchInputRightRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        
+        if (activeSection === 'left') {
+          setShowSearchLeft(true);
+          setTimeout(() => searchInputLeftRef.current?.focus(), 100);
+        } else if (activeSection === 'right') {
+          setShowSearchRight(true);
+          setTimeout(() => searchInputRightRef.current?.focus(), 100);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSection]);
 
   const handleConvert = () => {
     setError('');
@@ -107,6 +137,21 @@ export default function App() {
     }
   };
 
+  const highlightText = (text, searchTerm) => {
+    if (!searchTerm.trim()) return text;
+
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+
+    return parts.map((part, i) => 
+      regex.test(part) ? (
+        <mark key={i} className="bg-yellow-400 text-slate-900 rounded px-0.5">
+          {part}
+        </mark>
+      ) : part
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4 md:p-8 flex items-center justify-center">
       <div className="max-w-7xl w-full mx-auto">
@@ -158,7 +203,12 @@ export default function App() {
         )}
 
         <div className="grid lg:grid-cols-2 gap-6">
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+          <div 
+            ref={leftSectionRef}
+            onFocus={() => setActiveSection('left')}
+            onClick={() => setActiveSection('left')}
+            className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Upload className="w-5 h-5 text-blue-400" />
@@ -166,6 +216,19 @@ export default function App() {
               </h2>
 
               <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowSearchLeft(!showSearchLeft);
+                    if (!showSearchLeft) {
+                      setTimeout(() => searchInputLeftRef.current?.focus(), 100);
+                    }
+                  }}
+                  className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2"
+                  title="Buscar (Ctrl+F)"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                
                 <label className="cursor-pointer bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-blue-900/50">
                   <FileText className="w-4 h-4" />
                   <span className="hidden md:inline">Cargar</span>
@@ -183,12 +246,46 @@ export default function App() {
               </div>
             </div>
 
-            <textarea
-              value={sqlInput}
-              onChange={(e) => setSqlInput(e.target.value)}
-              placeholder="-- Pega aquí tus sentencias CREATE TABLE&#10;&#10;CREATE TABLE usuarios (&#10;    id INT IDENTITY(1,1) PRIMARY KEY,&#10;    nombre NVARCHAR(100) NOT NULL,&#10;    email NVARCHAR(255) UNIQUE,&#10;    activo BIT DEFAULT (1)&#10;);"
-              className="w-full h-96 bg-slate-950 text-green-400 font-mono text-sm p-4 rounded-xl border border-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 resize-none shadow-inner"
-            />
+            {showSearchLeft && (
+              <div className="mb-4 flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                <Search className="w-4 h-4 text-slate-400" />
+                <input
+                  ref={searchInputLeftRef}
+                  type="text"
+                  value={searchTermLeft}
+                  onChange={(e) => setSearchTermLeft(e.target.value)}
+                  placeholder="Buscar en SQL..."
+                  className="flex-1 bg-transparent text-white text-sm focus:outline-none"
+                />
+                {searchTermLeft && (
+                  <button
+                    onClick={() => setSearchTermLeft('')}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowSearchLeft(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="w-full h-96 bg-slate-950 text-green-400 font-mono text-sm p-4 rounded-xl border border-slate-700 overflow-auto">
+              {searchTermLeft ? (
+                <pre className="whitespace-pre-wrap">{highlightText(sqlInput, searchTermLeft)}</pre>
+              ) : (
+                <textarea
+                  value={sqlInput}
+                  onChange={(e) => setSqlInput(e.target.value)}
+                  placeholder="-- Pega aquí tus sentencias CREATE TABLE&#10;&#10;CREATE TABLE usuarios (&#10;    id INT IDENTITY(1,1) PRIMARY KEY,&#10;    nombre NVARCHAR(100) NOT NULL,&#10;    email NVARCHAR(255) UNIQUE,&#10;    activo BIT DEFAULT (1)&#10;);"
+                  className="w-full h-full bg-transparent text-green-400 font-mono text-sm focus:outline-none resize-none"
+                />
+              )}
+            </div>
 
             <button
               onClick={handleConvert}
@@ -200,23 +297,73 @@ export default function App() {
             </button>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+          <div 
+            ref={rightSectionRef}
+            onFocus={() => setActiveSection('right')}
+            onClick={() => setActiveSection('right')}
+            className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Download className="w-5 h-5 text-green-400" />
                 Migraciones Laravel
               </h2>
 
-              {migrations.length > 0 && (
-                <button
-                  onClick={handleDownload}
-                  className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-green-900/50"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden md:inline">Descargar ZIP</span>
-                </button>
-              )}
+              <div className="flex gap-2">
+                {migrations.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowSearchRight(!showSearchRight);
+                        if (!showSearchRight) {
+                          setTimeout(() => searchInputRightRef.current?.focus(), 100);
+                        }
+                      }}
+                      className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2"
+                      title="Buscar (Ctrl+F)"
+                    >
+                      <Search className="w-4 h-4" />
+                    </button>
+                    
+                    <button
+                      onClick={handleDownload}
+                      className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-green-900/50"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="hidden md:inline">Descargar ZIP</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
+
+            {showSearchRight && migrations.length > 0 && (
+              <div className="mb-4 flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                <Search className="w-4 h-4 text-slate-400" />
+                <input
+                  ref={searchInputRightRef}
+                  type="text"
+                  value={searchTermRight}
+                  onChange={(e) => setSearchTermRight(e.target.value)}
+                  placeholder="Buscar en migraciones..."
+                  className="flex-1 bg-transparent text-white text-sm focus:outline-none"
+                />
+                {searchTermRight && (
+                  <button
+                    onClick={() => setSearchTermRight('')}
+                    className="text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowSearchRight(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-start gap-3 animate-pulse">
@@ -247,7 +394,7 @@ export default function App() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
-                          {m.tableName}
+                          {highlightText(m.tableName, searchTermRight)}
                         </span>
                         <p className="text-xs text-slate-500 mt-0.5">create_{m.tableName}_table.php</p>
                       </div>
@@ -280,7 +427,7 @@ export default function App() {
                     </div>
                     
                     <pre className={`text-yellow-300 text-xs overflow-x-auto whitespace-pre-wrap ${expandedId === m.id ? '' : 'max-h-32 overflow-hidden'}`}>
-                      <code>{expandedId === m.id ? m.fullMigration : m.code}</code>
+                      <code>{highlightText(expandedId === m.id ? m.fullMigration : m.code, searchTermRight)}</code>
                     </pre>
                     
                     {copiedId === m.id && (
@@ -314,6 +461,17 @@ export default function App() {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(59, 130, 246, 0.7);
+        }
+        mark {
+          animation: highlight 0.3s ease-in-out;
+        }
+        @keyframes highlight {
+          from {
+            background-color: rgba(250, 204, 21, 0.3);
+          }
+          to {
+            background-color: rgba(250, 204, 21, 1);
+          }
         }
       `}</style>
     </div>
