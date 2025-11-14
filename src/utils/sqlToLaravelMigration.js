@@ -1,15 +1,7 @@
-// =========================================================
-//  SQL SERVER → LARAVEL MIGRATION CONVERTER (MEJORADO Y CORREGIDO)
-// =========================================================
-
 function sqlToLaravelMigration(sqlInput, tableName = null) {
     const { table, columns, constraints } = processSql(sqlInput, tableName);
     return generateMigration(table, columns, constraints);
 }
-
-// =========================================================
-//  PROCESS SQL
-// =========================================================
 
 function processSql(sql, tableNameOverride = null) {
     const lines = sql
@@ -42,14 +34,9 @@ function processSql(sql, tableNameOverride = null) {
     return { table: tableName, columns, constraints };
 }
 
-// =========================================================
-//  PROCESS LINE (COLUMN / UNIQUE / PK / FK)
-// =========================================================
-
 function processLine(line, columns, constraints) {
     line = line.trim();
 
-    // ---- PRIMARY KEY (tabla) ----
     if (line.toUpperCase().includes('PRIMARY KEY') && !line.match(/^\[/)) {
         const pkMatch = line.match(/PRIMARY\s+KEY\s*\(([^)]+)\)/i);
         if (pkMatch) {
@@ -61,7 +48,6 @@ function processLine(line, columns, constraints) {
         return;
     }
 
-    // ---- FOREIGN KEY ----
     if (line.toUpperCase().includes('FOREIGN KEY')) {
         const fkMatch = line.match(
             /FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(\[?\w+\]?)[.\s]*\(([^)]+)\)(?:\s+ON\s+DELETE\s+(\w+))?(?:\s+ON\s+UPDATE\s+(\w+))?/i
@@ -80,7 +66,6 @@ function processLine(line, columns, constraints) {
         return;
     }
 
-    // ---- UNIQUE (tabla) ----
     if (line.toUpperCase().startsWith('UNIQUE(')) {
         const uniqueMatch = line.match(/UNIQUE\s*\(([^)]+)\)/i);
         if (uniqueMatch) {
@@ -92,7 +77,6 @@ function processLine(line, columns, constraints) {
         return;
     }
 
-    // ---- COLUMNA ---- (MEJORADO PARA CAPTURAR MAX Y DATETIME2(0))
     const columnMatch = line.match(
         /^\[?(\w+)\]?\s+([^\s(]+)(?:\(([^\)]+)\))?(.*)/i
     );
@@ -101,7 +85,6 @@ function processLine(line, columns, constraints) {
         const [, name, type, lengthPart, rest] = columnMatch;
         const upperRest = (rest || '').toUpperCase();
 
-        // Parsear length y precision
         let length = null;
         let precision = null;
 
@@ -133,7 +116,6 @@ function processLine(line, columns, constraints) {
             default: null
         };
 
-        // Capturar DEFAULT con paréntesis: DEFAULT (1), DEFAULT (getdate()), etc.
         const defaultMatch = rest.match(/DEFAULT\s*\(([^)]+)\)/i);
         if (defaultMatch) {
             column.default = defaultMatch[1].trim();
@@ -143,14 +125,9 @@ function processLine(line, columns, constraints) {
     }
 }
 
-// =========================================================
-//  MAP SQL TYPE → LARAVEL TYPE
-// =========================================================
-
 function mapTypeToLaravel(col) {
     let baseType = col.type.toLowerCase();
 
-    // Auto-increment con primary key siempre es "id"
     if (col.autoIncrement && col.primaryKey) return 'id';
 
     if (baseType.includes('bigint')) return 'bigInteger';
@@ -161,25 +138,32 @@ function mapTypeToLaravel(col) {
     if (baseType.includes('bit')) return 'boolean';
     
     if (baseType.includes('decimal') || baseType.includes('numeric')) return 'decimal';
+    if (baseType.includes('float')) return 'float';
     
     if (baseType.includes('datetime')) return 'dateTime';
     if (baseType.includes('date')) return 'date';
     if (baseType.includes('time')) return 'time';
 
     if (baseType.includes('nvarchar') || baseType.includes('varchar')) {
-        // Si es MAX o no tiene length, usar text
         if (col.length === 'MAX' || !col.length) return 'text';
         return 'string';
     }
 
     if (baseType.includes('text') || baseType.includes('ntext')) return 'text';
+    if (baseType.includes('char')) return 'char';
 
     return 'string';
 }
 
-// =========================================================
-//  GENERATOR
-// =========================================================
+function isForeignKeyColumn(colName, constraints) {
+    return constraints.find(c => c.type === 'foreign' && c.column === colName);
+}
+
+function getReferencedTable(colName, constraints) {
+    const fk = isForeignKeyColumn(colName, constraints);
+    if (!fk) return null;
+    return fk.on;
+}
 
 function generateMigration(table, columns, constraints) {
     let out = `<?php
@@ -189,7 +173,8 @@ use Illuminate\\Database\\Schema\\Blueprint;
 use Illuminate\\Support\\Facades\\Schema;
 use Illuminate\\Support\\Facades\\DB;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('${table}', function (Blueprint $table) {
@@ -198,19 +183,43 @@ return new class extends Migration {
     columns.forEach(col => {
         let line = '            ';
 
-        // ---- PRIMARY KEY AUTO-INCREMENT ----
         if (col.autoIncrement && col.primaryKey) {
             line += `$table->id('${col.name}');`;
             out += line + '\n';
             return;
         }
 
+        const fk = isForeignKeyColumn(col.name, constraints);
+        
+        if (fk) {
+            const refTable = fk.on;
+            line += `$table->foreignId('${col.name}')->constrained('${refTable}')`;
+            
+            if (fk.onDelete) {
+                line += `->onDelete('${fk.onDelete}')`;
+            }
+            if (fk.onUpdate) {
+                line += `->onUpdate('${fk.onUpdate}')`;
+            }
+            
+            if (col.nullable) line += '->nullable()';
+            
+            line += ';';
+            out += line + '\n';
+            
+            fk.processed = true;
+            return;
+        }
+
         const laravelType = mapTypeToLaravel(col);
 
-        // ---- NORMAL TYPE ----
         line += `$table->${laravelType}('${col.name}'`;
 
         if (laravelType === 'string' && col.length && col.length !== 'MAX') {
+            line += `, ${col.length}`;
+        }
+
+        if (laravelType === 'char' && col.length) {
             line += `, ${col.length}`;
         }
 
@@ -227,22 +236,18 @@ return new class extends Migration {
         if (col.default !== null) {
             const def = col.default.trim();
             
-            // Manejar getdate() y CURRENT_TIMESTAMP
             if (def.toLowerCase() === 'getdate' || def.toLowerCase() === 'current_timestamp') {
                 line += `->default(DB::raw('CURRENT_TIMESTAMP'))`;
             }
-            // Convertir 1/0 a true/false para booleanos
             else if (def === '1' && laravelType === 'boolean') {
                 line += '->default(true)';
             }
             else if (def === '0' && laravelType === 'boolean') {
                 line += '->default(false)';
             }
-            // Números normales
             else if (!isNaN(def)) {
                 line += `->default(${def})`;
             }
-            // Strings
             else {
                 line += `->default('${def}')`;
             }
@@ -254,15 +259,16 @@ return new class extends Migration {
         out += line + '\n';
     });
 
-    // ---- CONSTRAINTS ----
     constraints.forEach(c => {
         if (c.type === 'primary') {
             out += `            $table->primary([${c.columns.map(x => `'${x}'`).join(', ')}]);\n`;
         }
+        
         if (c.type === 'unique') {
             out += `            $table->unique([${c.columns.map(x => `'${x}'`).join(', ')}]);\n`;
         }
-        if (c.type === 'foreign') {
+        
+        if (c.type === 'foreign' && !c.processed) {
             let fk = `            $table->foreign('${c.column}')->references('${c.references}')->on('${c.on}')`;
             if (c.onDelete) fk += `->onDelete('${c.onDelete}')`;
             if (c.onUpdate) fk += `->onUpdate('${c.onUpdate}')`;
@@ -271,7 +277,6 @@ return new class extends Migration {
         }
     });
 
-    // Solo agregar timestamps si NO existen created_at Y updated_at
     const hasCreatedAt = columns.some(c => c.name === 'created_at');
     const hasUpdatedAt = columns.some(c => c.name === 'updated_at');
     
@@ -279,8 +284,7 @@ return new class extends Migration {
         out += `            $table->timestamps();\n`;
     }
 
-    out += `
-        });
+    out += `        });
     }
 
     public function down(): void

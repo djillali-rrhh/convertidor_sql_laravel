@@ -3,14 +3,7 @@ import { Upload, Download, FileText, AlertCircle, CheckCircle2, Wand2, Copy, Che
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
-// =========================================================
-//  IMPORTAR LA FUNCIÓN DE CONVERSIÓN DESDE UTILS
-// =========================================================
 import { sqlToLaravelMigration } from './utils/sqlToLaravelMigration';
-
-// =========================================================
-//  COMPONENTE PRINCIPAL
-// =========================================================
 
 export default function App() {
   const [sqlInput, setSqlInput] = useState('');
@@ -20,9 +13,6 @@ export default function App() {
   const [copiedId, setCopiedId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
-  // --------------------------------
-  // CONVERTIR SQL → MIGRATIONS usando la función importada
-  // --------------------------------
   const handleConvert = () => {
     setError('');
     setSuccess('');
@@ -67,18 +57,12 @@ export default function App() {
     }
   };
 
-  // --------------------------------
-  // Copiar código individual
-  // --------------------------------
   const handleCopy = (migration) => {
     navigator.clipboard.writeText(migration.fullMigration);
     setCopiedId(migration.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // --------------------------------
-  // Eliminar migración individual
-  // --------------------------------
   const handleDelete = (id) => {
     setMigrations(migrations.filter(m => m.id !== id));
     if (migrations.length === 1) {
@@ -86,9 +70,6 @@ export default function App() {
     }
   };
 
-  // --------------------------------
-  // Limpiar todo
-  // --------------------------------
   const handleClear = () => {
     setSqlInput('');
     setMigrations([]);
@@ -96,9 +77,6 @@ export default function App() {
     setSuccess('');
   };
 
-  // --------------------------------
-  // Cargar archivo .sql
-  // --------------------------------
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -108,9 +86,6 @@ export default function App() {
     }
   };
 
-  // --------------------------------
-  // Descargar ZIP
-  // --------------------------------
   const handleDownload = async () => {
     if (migrations.length === 0) return;
 
@@ -132,15 +107,10 @@ export default function App() {
     }
   };
 
-  // =========================================================
-  //  UI
-  // =========================================================
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4 md:p-8 flex items-center justify-center">
       <div className="max-w-7xl w-full mx-auto">
 
-        {/* Header mejorado */}
         <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 md:p-8 mb-6 border border-slate-700/50 shadow-2xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
@@ -164,7 +134,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Estadísticas */}
         {migrations.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-900/30 backdrop-blur rounded-xl p-4 border border-blue-800/40">
@@ -189,7 +158,6 @@ export default function App() {
         )}
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Panel Izquierdo */}
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
@@ -232,7 +200,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Panel Derecho */}
           <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
@@ -328,7 +295,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="mt-8 text-center text-slate-500 text-sm">
           <p>© 2025 RRHH INGENIA • Herramienta de conversión SQL Server a Laravel</p>
         </div>
