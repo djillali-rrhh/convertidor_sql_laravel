@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Upload, Download, FileText, AlertCircle, CheckCircle2, Wand2 } from 'lucide-react';
+import { Upload, Download, FileText, AlertCircle, CheckCircle2, Wand2, Copy, Check, Trash2, Eye, EyeOff } from 'lucide-react';
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 // =========================================================
 //  IMPORTAR LA FUNCIÓN DE CONVERSIÓN DESDE UTILS
@@ -15,6 +17,8 @@ export default function App() {
   const [migrations, setMigrations] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   // --------------------------------
   // CONVERTIR SQL → MIGRATIONS usando la función importada
@@ -37,14 +41,9 @@ export default function App() {
 
     statements.forEach((stmt, idx) => {
       try {
-        // Usamos la función importada
         const fullMigration = sqlToLaravelMigration(stmt);
-        
-        // Extraer el nombre de la tabla
         const tableMatch = stmt.match(/CREATE\s+TABLE\s+\[?(\w+)\]?/i);
         const tableName = tableMatch ? tableMatch[1] : `table_${idx + 1}`;
-
-        // Extraer solo el código del Schema::create
         const schemaMatch = fullMigration.match(/Schema::create\('.*?',[\s\S]*?^\s*}\);/m);
         const code = schemaMatch ? schemaMatch[0] : fullMigration;
 
@@ -64,8 +63,37 @@ export default function App() {
       setError("No se pudo convertir ninguna sentencia SQL.");
     } else {
       setMigrations(results);
-      setSuccess(`Se convirtieron ${results.length} migración(es)`);
+      setSuccess(`✓ ${results.length} migración${results.length > 1 ? 'es' : ''} generada${results.length > 1 ? 's' : ''} correctamente`);
     }
+  };
+
+  // --------------------------------
+  // Copiar código individual
+  // --------------------------------
+  const handleCopy = (migration) => {
+    navigator.clipboard.writeText(migration.fullMigration);
+    setCopiedId(migration.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // --------------------------------
+  // Eliminar migración individual
+  // --------------------------------
+  const handleDelete = (id) => {
+    setMigrations(migrations.filter(m => m.id !== id));
+    if (migrations.length === 1) {
+      setSuccess('');
+    }
+  };
+
+  // --------------------------------
+  // Limpiar todo
+  // --------------------------------
+  const handleClear = () => {
+    setSqlInput('');
+    setMigrations([]);
+    setError('');
+    setSuccess('');
   };
 
   // --------------------------------
@@ -87,12 +115,8 @@ export default function App() {
     if (migrations.length === 0) return;
 
     try {
-      const JSZip = (await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')).default;
-      const { saveAs } = await import('https://cdn.jsdelivr.net/npm/file-saver@2.0.5/+esm');
-
       const zip = new JSZip();
       const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, "_");
-
       const folder = zip.folder(`laravel_migrations_${timestamp}`);
 
       migrations.forEach((m, idx) => {
@@ -102,6 +126,7 @@ export default function App() {
 
       const zipFile = await zip.generateAsync({ type: "blob" });
       saveAs(zipFile, `migrations_${timestamp}.zip`);
+      setSuccess('✓ Archivo ZIP descargado correctamente');
     } catch (err) {
       setError('Error al generar el ZIP: ' + err.message);
     }
@@ -112,43 +137,95 @@ export default function App() {
   // =========================================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4 md:p-8 flex items-center justify-center">
+      <div className="max-w-7xl w-full mx-auto">
 
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <FileText className="w-12 h-12 text-purple-400" />
-            <h1 className="text-4xl font-bold text-white">SQL Server → Laravel</h1>
+        {/* Header mejorado */}
+        <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 md:p-8 mb-6 border border-slate-700/50 shadow-2xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <img 
+                src="/isotipo-colores.webp" 
+                alt="RRHH Ingenia" 
+                className="w-14 h-14 md:w-16 md:h-16 object-contain"
+              />
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">
+                  SQL Server → Laravel
+                </h1>
+              </div>
+            </div>
+            
+            <div className="text-center md:text-right">
+              <p className="text-slate-300 text-sm md:text-base mb-1">
+                Convierte tus tablas SQL Server a migraciones Laravel
+              </p>
+            </div>
           </div>
-          <p className="text-purple-200 text-lg">Convierte CREATE TABLE de SQL Server a Migraciones de Laravel</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        {/* Estadísticas */}
+        {migrations.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-blue-900/30 backdrop-blur rounded-xl p-4 border border-blue-800/40">
+              <p className="text-blue-300 text-xs uppercase tracking-wide mb-1">Migraciones</p>
+              <p className="text-white text-2xl font-bold">{migrations.length}</p>
+            </div>
+            <div className="bg-green-900/30 backdrop-blur rounded-xl p-4 border border-green-800/40">
+              <p className="text-green-300 text-xs uppercase tracking-wide mb-1">Tablas</p>
+              <p className="text-white text-2xl font-bold">{migrations.length}</p>
+            </div>
+            <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700/40">
+              <p className="text-slate-300 text-xs uppercase tracking-wide mb-1">Líneas SQL</p>
+              <p className="text-white text-2xl font-bold">{sqlInput.split('\n').length}</p>
+            </div>
+            <div className="bg-slate-800/50 backdrop-blur rounded-xl p-4 border border-slate-700/40">
+              <p className="text-slate-300 text-xs uppercase tracking-wide mb-1">Estado</p>
+              <p className="text-green-400 text-sm font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" /> Listo
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Panel Izquierdo */}
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-6 border border-purple-500/30">
+          <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                <Upload className="w-5 h-5" />
-                SQL Server (Entrada)
+                <Upload className="w-5 h-5 text-blue-400" />
+                SQL Server
               </h2>
 
-              <label className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Cargar .sql
-                <input type="file" accept=".sql,.txt" onChange={handleFileUpload} className="hidden" />
-              </label>
+              <div className="flex gap-2">
+                <label className="cursor-pointer bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-blue-900/50">
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden md:inline">Cargar</span>
+                  <input type="file" accept=".sql,.txt" onChange={handleFileUpload} className="hidden" />
+                </label>
+                
+                {sqlInput && (
+                  <button
+                    onClick={handleClear}
+                    className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <textarea
               value={sqlInput}
               onChange={(e) => setSqlInput(e.target.value)}
-              placeholder="CREATE TABLE usuarios (&#10;    id INT IDENTITY(1,1) PRIMARY KEY,&#10;    nombre NVARCHAR(100) NOT NULL,&#10;    email NVARCHAR(255) UNIQUE,&#10;    activo BIT DEFAULT (1)&#10;);"
-              className="w-full h-96 bg-slate-900 text-green-400 font-mono text-sm p-4 rounded-lg border border-slate-700 focus:border-purple-500 focus:outline-none resize-none"
+              placeholder="-- Pega aquí tus sentencias CREATE TABLE&#10;&#10;CREATE TABLE usuarios (&#10;    id INT IDENTITY(1,1) PRIMARY KEY,&#10;    nombre NVARCHAR(100) NOT NULL,&#10;    email NVARCHAR(255) UNIQUE,&#10;    activo BIT DEFAULT (1)&#10;);"
+              className="w-full h-96 bg-slate-950 text-green-400 font-mono text-sm p-4 rounded-xl border border-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 resize-none shadow-inner"
             />
 
             <button
               onClick={handleConvert}
-              className="w-full mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+              disabled={!sqlInput.trim()}
+              className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
             >
               <Wand2 className="w-5 h-5" />
               Convertir a Laravel
@@ -156,62 +233,123 @@ export default function App() {
           </div>
 
           {/* Panel Derecho */}
-          <div className="bg-slate-800/50 backdrop-blur rounded-xl p-6 border border-purple-500/30">
+          <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                <Download className="w-5 h-5" />
-                Laravel Migrations (Salida)
+                <Download className="w-5 h-5 text-green-400" />
+                Migraciones Laravel
               </h2>
 
               {migrations.length > 0 && (
                 <button
                   onClick={handleDownload}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2"
+                  className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-green-900/50"
                 >
                   <Download className="w-4 h-4" />
-                  Descargar ZIP
+                  <span className="hidden md:inline">Descargar ZIP</span>
                 </button>
               )}
             </div>
 
             {error && (
-              <div className="mb-4 bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg flex items-start gap-2">
+              <div className="mb-4 bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-start gap-3 animate-pulse">
                 <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+                <span className="text-sm">{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="mb-4 bg-green-500/20 border border-green-500 text-green-200 p-4 rounded-lg flex items-start gap-2">
+              <div className="mb-4 bg-green-500/20 border border-green-500/50 text-green-200 p-4 rounded-xl flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>{success}</span>
+                <span className="text-sm">{success}</span>
               </div>
             )}
 
-            <div className="space-y-4 h-96 overflow-y-auto">
+            <div className="space-y-3 h-96 overflow-y-auto pr-2 custom-scrollbar">
               {migrations.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-slate-500">
                   <div className="text-center">
-                    <FileText className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                    <p>Las migraciones aparecerán aquí</p>
+                    <FileText className="w-20 h-20 mx-auto mb-4 opacity-20" />
+                    <p className="text-lg font-medium">Sin migraciones</p>
+                    <p className="text-sm text-slate-600 mt-2">Convierte tu SQL para ver los resultados</p>
                   </div>
                 </div>
               ) : (
                 migrations.map((m) => (
-                  <div key={m.id} className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                    <div className="mb-2">
-                      <span className="text-xs font-semibold text-purple-400 uppercase">create_{m.tableName}_table</span>
+                  <div key={m.id} className="bg-slate-950/80 rounded-xl p-4 border border-slate-700/50 hover:border-blue-700/50 transition-all group">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+                          {m.tableName}
+                        </span>
+                        <p className="text-xs text-slate-500 mt-0.5">create_{m.tableName}_table.php</p>
+                      </div>
+                      
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setExpandedId(expandedId === m.id ? null : m.id)}
+                          className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg text-xs transition-all"
+                          title={expandedId === m.id ? "Contraer" : "Expandir"}
+                        >
+                          {expandedId === m.id ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
+                        
+                        <button
+                          onClick={() => handleCopy(m)}
+                          className="bg-blue-700 hover:bg-blue-600 text-white p-2 rounded-lg text-xs transition-all"
+                          title="Copiar código"
+                        >
+                          {copiedId === m.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDelete(m.id)}
+                          className="bg-red-700 hover:bg-red-600 text-white p-2 rounded-lg text-xs transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
-                    <pre className="text-yellow-300 text-xs overflow-x-auto whitespace-pre-wrap">
-                      <code>{m.code}</code>
+                    
+                    <pre className={`text-yellow-300 text-xs overflow-x-auto whitespace-pre-wrap ${expandedId === m.id ? '' : 'max-h-32 overflow-hidden'}`}>
+                      <code>{expandedId === m.id ? m.fullMigration : m.code}</code>
                     </pre>
+                    
+                    {copiedId === m.id && (
+                      <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Código copiado al portapapeles
+                      </p>
+                    )}
                   </div>
                 ))
               )}
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-slate-500 text-sm">
+          <p>© 2025 RRHH INGENIA • Herramienta de conversión SQL Server a Laravel</p>
+        </div>
       </div>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.5);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(59, 130, 246, 0.5);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(59, 130, 246, 0.7);
+        }
+      `}</style>
     </div>
   );
 }
