@@ -23,9 +23,22 @@ function processSql(sql, tableNameOverride = null) {
             continue;
         }
 
-        if (!insideColumns) continue;
+        if (line.match(/ALTER\s+TABLE/i)) {
+            if (!tableName) {
+                const match = line.match(/ALTER\s+TABLE\s+\[?(\w+)\]?/i);
+                if (match) tableName = match[1];
+            }
+            
+            processLine(line, columns, constraints);
+            continue;
+        }
 
-        if (line === ')' || line === ');' || line === 'GO') break;
+        if (!insideColumns && !line.match(/ALTER\s+TABLE/i)) continue;
+
+        if (line === ')' || line === ');' || line === 'GO') {
+            insideColumns = false;
+            continue;
+        }
 
         let clean = line.replace(/,$/, '');
         processLine(clean, columns, constraints);
@@ -36,6 +49,24 @@ function processSql(sql, tableNameOverride = null) {
 
 function processLine(line, columns, constraints) {
     line = line.trim();
+
+    if (line.match(/ALTER\s+TABLE.*ADD\s+FOREIGN\s+KEY/i)) {
+        const fkMatch = line.match(
+            /ADD\s+FOREIGN\s+KEY\s*\(\[?(\w+)\]?\)\s+REFERENCES\s+\[?(\w+)\]?\s*\(\[?(\w+)\]?\)(?:\s+ON\s+DELETE\s+(\w+))?(?:\s+ON\s+UPDATE\s+(\w+))?/i
+        );
+
+        if (fkMatch) {
+            constraints.push({
+                type: 'foreign',
+                column: fkMatch[1].trim(),
+                references: fkMatch[3].trim(),
+                on: fkMatch[2].trim(),
+                onDelete: fkMatch[4] ? fkMatch[4].toLowerCase() : null,
+                onUpdate: fkMatch[5] ? fkMatch[5].toLowerCase() : null
+            });
+        }
+        return;
+    }
 
     if (line.toUpperCase().includes('PRIMARY KEY') && !line.match(/^\[/)) {
         const pkMatch = line.match(/PRIMARY\s+KEY\s*\(([^)]+)\)/i);
@@ -48,7 +79,7 @@ function processLine(line, columns, constraints) {
         return;
     }
 
-    if (line.toUpperCase().includes('FOREIGN KEY')) {
+    if (line.toUpperCase().includes('FOREIGN KEY') && !line.match(/ALTER\s+TABLE/i)) {
         const fkMatch = line.match(
             /FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(\[?\w+\]?)[.\s]*\(([^)]+)\)(?:\s+ON\s+DELETE\s+(\w+))?(?:\s+ON\s+UPDATE\s+(\w+))?/i
         );
