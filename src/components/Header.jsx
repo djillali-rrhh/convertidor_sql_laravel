@@ -10,14 +10,14 @@ export default function Header() {
           />
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">
-              SQL Server → Laravel
+              SQL → Laravel Migrations
             </h1>
           </div>
         </div>
         
         <div className="text-center md:text-right">
           <p className="text-slate-300 text-sm md:text-base mb-1">
-            Convierte tus tablas SQL Server a migraciones Laravel
+            Soporte para MySQL, SQL Server y PostgreSQL
           </p>
         </div>
       </div>

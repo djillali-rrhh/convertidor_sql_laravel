@@ -1,7 +1,38 @@
 import { Upload, FileText, Trash2, Search, Wand2 } from 'lucide-react';
 import SearchBar from './SearchBar';
 
+const placeholders = {
+  mysql: `-- Pega aquí tus sentencias CREATE TABLE de MySQL
+
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    activo TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);`,
+  sqlserver: `-- Pega aquí tus sentencias CREATE TABLE de SQL Server
+
+CREATE TABLE usuarios (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    nombre NVARCHAR(100) NOT NULL,
+    email NVARCHAR(255) UNIQUE,
+    activo BIT DEFAULT (1),
+    created_at DATETIME2(0) DEFAULT (GETDATE())
+);`,
+  postgresql: `-- Pega aquí tus sentencias CREATE TABLE de PostgreSQL
+
+CREATE TABLE usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
+);`
+};
+
 export default function SQLInputPanel({
+  selectedDb,
   sqlInput,
   setSqlInput,
   searchTermLeft,
@@ -16,6 +47,12 @@ export default function SQLInputPanel({
   leftSectionRef,
   searchInputLeftRef
 }) {
+  const dbNames = {
+    mysql: 'MySQL',
+    sqlserver: 'SQL Server',
+    postgresql: 'PostgreSQL'
+  };
+
   return (
     <div 
       ref={leftSectionRef}
@@ -26,7 +63,7 @@ export default function SQLInputPanel({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-white flex items-center gap-2">
           <Upload className="w-5 h-5 text-blue-400" />
-          SQL Server
+          {dbNames[selectedDb]}
         </h2>
 
         <div className="flex gap-2">
@@ -76,7 +113,7 @@ export default function SQLInputPanel({
           <textarea
             value={sqlInput}
             onChange={(e) => setSqlInput(e.target.value)}
-            placeholder="-- Pega aquí tus sentencias CREATE TABLE&#10;&#10;CREATE TABLE usuarios (&#10;    id INT IDENTITY(1,1) PRIMARY KEY,&#10;    nombre NVARCHAR(100) NOT NULL,&#10;    email NVARCHAR(255) UNIQUE,&#10;    activo BIT DEFAULT (1)&#10;);"
+            placeholder={placeholders[selectedDb]}
             className="w-full h-full bg-transparent text-green-400 font-mono text-sm focus:outline-none resize-none"
           />
         )}

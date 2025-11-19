@@ -2,15 +2,19 @@ import { useState, useRef } from 'react';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
-import { sqlToLaravelMigration } from './utils/sqlToLaravelMigration';
+import { mysqlToLaravelMigration } from './utils/converters/mysqlConverter';
+import { sqlserverToLaravelMigration } from './utils/converters/sqlserverConverter';
+import { postgresqlToLaravelMigration } from './utils/converters/postgresqlConverter';
 import { useSearch } from './hooks/useSearch';
 
 import Header from './components/Header';
+import DatabaseSelector from './components/DatabaseSelector';
 import StatsCards from './components/StatsCards';
 import SQLInputPanel from './components/SQLInputPanel';
 import MigrationsPanel from './components/MigrationsPanel';
 
 export default function App() {
+  const [selectedDb, setSelectedDb] = useState('mysql');
   const [sqlInput, setSqlInput] = useState('');
   const [migrations, setMigrations] = useState([]);
   const [error, setError] = useState('');
@@ -35,6 +39,12 @@ export default function App() {
     searchInputRightRef
   } = useSearch(activeSection);
 
+  const converters = {
+    mysql: mysqlToLaravelMigration,
+    sqlserver: sqlserverToLaravelMigration,
+    postgresql: postgresqlToLaravelMigration
+  };
+
   const handleConvert = () => {
     setError('');
     setSuccess('');
@@ -45,6 +55,7 @@ export default function App() {
       return;
     }
 
+    const converter = converters[selectedDb];
     const statements = sqlInput
       .split(/(?=CREATE\s+TABLE)/i)
       .filter(s => s.trim().length > 0);
@@ -53,8 +64,8 @@ export default function App() {
 
     statements.forEach((stmt, idx) => {
       try {
-        const fullMigration = sqlToLaravelMigration(stmt);
-        const tableMatch = stmt.match(/CREATE\s+TABLE\s+\[?(\w+)\]?/i);
+        const fullMigration = converter(stmt);
+        const tableMatch = stmt.match(/CREATE\s+TABLE\s+[\[`"]?(\w+)[\]`"]?/i);
         const tableName = tableMatch ? tableMatch[1] : `table_${idx + 1}`;
         const schemaMatch = fullMigration.match(/Schema::create\('.*?',[\s\S]*?^\s*}\);/m);
         const code = schemaMatch ? schemaMatch[0] : fullMigration;
@@ -149,10 +160,13 @@ export default function App() {
       <div className="max-w-7xl w-full mx-auto">
         <Header />
         
+        <DatabaseSelector selectedDb={selectedDb} onSelectDb={setSelectedDb} />
+        
         <StatsCards migrations={migrations} sqlInput={sqlInput} />
 
         <div className="grid lg:grid-cols-2 gap-6">
           <SQLInputPanel
+            selectedDb={selectedDb}
             sqlInput={sqlInput}
             setSqlInput={setSqlInput}
             searchTermLeft={searchTermLeft}
@@ -190,7 +204,7 @@ export default function App() {
         </div>
 
         <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>© 2025 RRHH INGENIA • Herramienta de conversión SQL Server a Laravel</p>
+          <p>© 2025 RRHH INGENIA • Herramienta de conversión SQL a Laravel</p>
         </div>
       </div>
 
