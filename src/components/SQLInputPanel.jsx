@@ -58,11 +58,12 @@ export default function SQLInputPanel({
       ref={leftSectionRef}
       onFocus={() => setActiveSection('left')}
       onClick={() => setActiveSection('left')}
-      className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl"
+      className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50 shadow-xl flex flex-col"
+      style={{ height: 'calc(100vh - 280px)' }}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-          <Upload className="w-5 h-5 text-blue-400" />
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-base font-semibold text-white flex items-center gap-2">
+          <Upload className="w-4 h-4 text-blue-400" />
           {dbNames[selectedDb]}
         </h2>
 
@@ -74,24 +75,24 @@ export default function SQLInputPanel({
                 setTimeout(() => searchInputLeftRef.current?.focus(), 100);
               }
             }}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2"
+            className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5"
             title="Buscar (Ctrl+F)"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3.5 h-3.5" />
           </button>
           
-          <label className="cursor-pointer bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-blue-900/50">
-            <FileText className="w-4 h-4" />
-            <span className="hidden md:inline">Cargar</span>
+          <label className="cursor-pointer bg-blue-700 hover:bg-blue-800 text-white px-2 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-lg hover:shadow-blue-900/50">
+            <FileText className="w-3.5 h-3.5" />
+            <span>Cargar</span>
             <input type="file" accept=".sql,.txt" onChange={handleFileUpload} className="hidden" />
           </label>
           
           {sqlInput && (
             <button
               onClick={handleClear}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2"
+              className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -106,7 +107,7 @@ export default function SQLInputPanel({
         inputRef={searchInputLeftRef}
       />
 
-      <div className="w-full h-96 bg-slate-950 text-green-400 font-mono text-sm p-4 rounded-xl border border-slate-700 overflow-auto">
+      <div className="flex-1 bg-slate-950 text-green-400 font-mono text-xs p-3 rounded-lg border border-slate-700 overflow-auto mb-3">
         {searchTermLeft ? (
           <pre className="whitespace-pre-wrap">{highlightText(sqlInput, searchTermLeft)}</pre>
         ) : (
@@ -114,7 +115,7 @@ export default function SQLInputPanel({
             value={sqlInput}
             onChange={(e) => setSqlInput(e.target.value)}
             placeholder={placeholders[selectedDb]}
-            className="w-full h-full bg-transparent text-green-400 font-mono text-sm focus:outline-none resize-none"
+            className="w-full h-full bg-transparent text-green-400 font-mono text-xs focus:outline-none resize-none"
           />
         )}
       </div>
@@ -122,9 +123,9 @@ export default function SQLInputPanel({
       <button
         onClick={handleConvert}
         disabled={!sqlInput.trim()}
-        className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
+        className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
       >
-        <Wand2 className="w-5 h-5" />
+        <Wand2 className="w-4 h-4" />
         Convertir a Laravel
       </button>
     </div>

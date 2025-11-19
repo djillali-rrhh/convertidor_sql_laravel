@@ -156,15 +156,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4 md:p-8 flex items-center justify-center">
-      <div className="max-w-7xl w-full mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4">
+      <div className="max-w-[1800px] w-full mx-auto">
         <Header />
-        
         <DatabaseSelector selectedDb={selectedDb} onSelectDb={setSelectedDb} />
-        
         <StatsCards migrations={migrations} sqlInput={sqlInput} />
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-4">
           <SQLInputPanel
             selectedDb={selectedDb}
             sqlInput={sqlInput}
@@ -202,15 +200,11 @@ export default function App() {
             searchInputRightRef={searchInputRightRef}
           />
         </div>
-
-        <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>© 2025 RRHH INGENIA • Herramienta de conversión SQL a Laravel</p>
-        </div>
       </div>
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
+          width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: rgba(15, 23, 42, 0.5);

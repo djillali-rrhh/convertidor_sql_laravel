@@ -26,11 +26,12 @@ export default function MigrationsPanel({
       ref={rightSectionRef}
       onFocus={() => setActiveSection('right')}
       onClick={() => setActiveSection('right')}
-      className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 shadow-xl"
+      className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50 shadow-xl flex flex-col"
+      style={{ height: 'calc(100vh - 280px)' }}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-          <Download className="w-5 h-5 text-green-400" />
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-base font-semibold text-white flex items-center gap-2">
+          <Download className="w-4 h-4 text-green-400" />
           Migraciones Laravel
         </h2>
 
@@ -44,18 +45,18 @@ export default function MigrationsPanel({
                     setTimeout(() => searchInputRightRef.current?.focus(), 100);
                   }
                 }}
-                className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2"
+                className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5"
                 title="Buscar (Ctrl+F)"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-3.5 h-3.5" />
               </button>
               
               <button
                 onClick={handleDownload}
-                className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2 shadow-lg hover:shadow-green-900/50"
+                className="bg-green-700 hover:bg-green-800 text-white px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-lg hover:shadow-green-900/50"
               >
-                <Download className="w-4 h-4" />
-                <span className="hidden md:inline">Descargar ZIP</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar ZIP</span>
               </button>
             </>
           )}
@@ -72,26 +73,26 @@ export default function MigrationsPanel({
       />
 
       {error && (
-        <div className="mb-4 bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-xl flex items-start gap-3 animate-pulse">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <span className="text-sm">{error}</span>
+        <div className="mb-3 bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span className="text-xs">{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 bg-green-500/20 border border-green-500/50 text-green-200 p-4 rounded-xl flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <span className="text-sm">{success}</span>
+        <div className="mb-3 bg-green-500/20 border border-green-500/50 text-green-200 p-3 rounded-lg flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span className="text-xs">{success}</span>
         </div>
       )}
 
-      <div className="space-y-3 h-96 overflow-y-auto pr-2 custom-scrollbar">
+      <div className="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
         {migrations.length === 0 ? (
           <div className="h-full flex items-center justify-center text-slate-500">
             <div className="text-center">
-              <FileText className="w-20 h-20 mx-auto mb-4 opacity-20" />
-              <p className="text-lg font-medium">Sin migraciones</p>
-              <p className="text-sm text-slate-600 mt-2">Convierte tu SQL para ver los resultados</p>
+              <FileText className="w-16 h-16 mx-auto mb-3 opacity-20" />
+              <p className="text-base font-medium">Sin migraciones</p>
+              <p className="text-xs text-slate-600 mt-1">Convierte tu SQL para ver los resultados</p>
             </div>
           </div>
         ) : (
